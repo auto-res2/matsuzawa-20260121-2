@@ -10,3 +10,15 @@
 }
 === [TRIAL RUN] PASSED for comparative-1-resnet18-cifar10 at Wed Jan 21 08:36:26 UTC 2026 ===
 
+=== [UV SYNC] Start at Wed Jan 21 08:37:06 UTC 2026 ===
+=== [UV SYNC] Finished successfully at Wed Jan 21 08:37:44 UTC 2026 ===
+=== [TRIAL RUN] Start for proposed-resnet18-cifar10 at Wed Jan 21 08:37:44 UTC 2026 ===
+{
+  "status": "completed",
+  "best_val_accuracy": 0.14453125,
+  "test_loss": 3.45757794380188,
+  "test_acc": 0.1015625,
+  "test_ece": 0.025269709527492523
+}
+=== [TRIAL RUN] PASSED for proposed-resnet18-cifar10 at Wed Jan 21 08:38:14 UTC 2026 ===
+
