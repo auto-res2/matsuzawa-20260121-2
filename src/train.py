@@ -272,6 +272,8 @@ def main(cfg_base: DictConfig):
     run_yaml = original_cwd / f"config/runs/{cfg_base.run}.yaml"
     assert run_yaml.exists(), f"Run config missing: {run_yaml}"
     run_cfg = OmegaConf.load(run_yaml)
+    # Disable struct mode to allow run_cfg to add new keys like run_id
+    OmegaConf.set_struct(cfg_base, False)
     cfg: DictConfig = OmegaConf.merge(cfg_base, run_cfg)
 
     # --------------------------------------------------------------
