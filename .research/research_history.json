@@ -490,5 +490,86 @@
     "experimental_code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AMSRPlusLoss(nn.Module):\n    def __init__(self, base_loss_fn=nn.CrossEntropyLoss(), kl_weight=0.5):\n        super(AMSRPlusLoss, self).__init__()\n        self.base_loss_fn = base_loss_fn\n        self.kl_weight = kl_weight\n        # Define a small auxiliary network to extract severity coefficients\n        self.aux_net = nn.Sequential(\n            nn.Linear(2, 16),  # assuming two basic transformation parameters (e.g., cropping and occlusion severity)\n            nn.ReLU(),\n            nn.Linear(16, 2)  # output refined severity coefficients for each component\n        )\n\n    def forward(self, logits, targets, aug_params):\n        ce_loss = self.base_loss_fn(logits, targets)\n        batch_size = logits.size(0)\n        num_classes = logits.size(1)\n        one_hot = F.one_hot(targets, num_classes=num_classes).float()\n\n        # Predict refined severity coefficients using the auxiliary network\n        severity_coeffs = self.aux_net(aug_params)  # Shape: (batch_size, 2)\n        # Hierarchical softening: use different softening exponents for each transformation component\n        comp1, comp2 = severity_coeffs[:, 0], severity_coeffs[:, 1]\n        # Combine coefficients in a hierarchical manner: first component modulates base exponent, second refines it\n        base_exp = 1.0 - 0.5 * comp1\n        refined_exp = base_exp - 0.3 * comp2\n        softening_exponent = refined_exp.clamp(min=0.1, max=1.0).unsqueeze(1)\n\n        # Generate the adaptive soft target\n        soft_targets = one_hot.pow(softening_exponent)\n        soft_targets = soft_targets / soft_targets.sum(dim=1, keepdim=True)\n\n        # Compute KL divergence loss\n        log_probs = F.log_softmax(logits, dim=1)\n        kl_loss = F.kl_div(log_probs, soft_targets, reduction='batchmean')\n\n        loss = ce_loss + self.kl_weight * kl_loss\n        return loss\n\n# Example usage\nif __name__ == '__main__':\n    batch_size = 16\n    num_classes = 10\n    logits = torch.randn(batch_size, num_classes, requires_grad=True)\n    targets = torch.randint(low=0, high=num_classes, size=(batch_size,))\n    # Simulate augmentation parameters (e.g., cropping severity and occlusion severity) in the range [0,1]\n    aug_params = torch.rand(batch_size, 2)\n    \n    criterion = AMSRPlusLoss(kl_weight=0.5)\n    loss = criterion(logits, targets, aug_params)\n    loss.backward()\n    print('Loss:', loss.item())",
     "expected_result": "We expect AMSR+ to yield an increase in test accuracy of around 3-4% compared to the fixed soft augmentation baseline on datasets like CIFAR-10. Additionally, the Expected Calibration Error (ECE) is anticipated to decrease by 15-25%, indicating enhanced model calibration. Ablation studies should show that each component of the AMSR+ framework (multi-component decomposition, hierarchical softening, and contrastive fine-tuning) contributes to these improvements.",
     "expected_conclusion": "AMSR+ provides a novel, adaptive solution to regularizing models under complex and compound data transformations. By decomposing transformation effects and integrating self-supervised contrastive signals into a hierarchical softening strategy, the method offers superior calibration, robustness, and accuracy. Academically, this work extends the paradigm of soft augmentation by introducing per-sample, multi-component adaptation, while practically, it offers a computationally efficient approach that seamlessly integrates with existing training pipelines to yield significant performance gains in data-scarce scenarios."
+  },
+  "experimental_design": {
+    "experiment_summary": "- Task: Image classification on CIFAR-10, where the model is trained to correctly classify images into 10 classes while maintaining well-calibrated confidence scores.\n- Purpose: To demonstrate that the proposed Adaptive Multi-Component Soft Regularization (AMSR+) method, which computes per-sample adaptive soft targets based on dynamic severity coefficients predicted by an auxiliary network and aggregated via a hierarchical softening function, can improve overall accuracy and calibration compared to fixed soft augmentation methods.\n- Components & Workflow: \n  • Base architecture: ResNet-18 (approx. 11M parameters) serves as the backbone for image classification.\n  • Augmentation & Regularization: The AMSR+ method adapts soft target distributions based on individual sample characteristics and transformation interactions using a lightweight auxiliary network and a hierarchical softening function.\n  • Loss Function: Combines cross-entropy and a weighted KL divergence between predicted logits and adaptive soft targets.\n  • Comparison: A baseline version using a fixed soft augmentation strategy (with constant softening exponent) will be used as a comparative method.\n- Experiment Scaling: The experiment is designed to run efficiently on the available Runner resources (self-hosted, gpu-runner with NVIDIA A100/H200 GPUs, 80GB+ VRAM, and ample RAM). The training on CIFAR-10 with ResNet-18 is a well-known, moderately scaled experiment that fits within these compute limits.",
+    "runner_config": {
+      "runner_label": [
+        "self-hosted",
+        "gpu-runner"
+      ],
+      "description": "NVIDIA A100 or H200, VRAM: 80 GB or more, RAM: 2048 GB or more"
+    },
+    "evaluation_metrics": [
+      {
+        "name": "accuracy",
+        "description": "Overall accuracy is computed as the percentage of correctly classified images. Correctness is determined by a direct comparison of the model's top-1 predicted class and the ground truth label. The metric is calculated by summing the number of correct predictions and dividing by the total number of samples. Accuracy is appropriate for image classification tasks and provides a clear measure of model performance. Visualization can include learning curves plotting accuracy over epochs."
+      },
+      {
+        "name": "ECE",
+        "description": "Expected Calibration Error (ECE) measures the calibration of the model's confidence scores. ECE is computed by partitioning the predictions into bins, computing the difference between the average confidence and the accuracy in each bin, and then taking a weighted average of these gaps. A lower ECE indicates better alignment between confidence and correctness. This metric is appropriate since the AMSR+ method specifically aims to improve calibration. Common visualizations include reliability diagrams and error distribution plots."
+      }
+    ],
+    "models_to_use": [
+      "ResNet-18 (≈11M parameters)"
+    ],
+    "datasets_to_use": [
+      "CIFAR-10"
+    ],
+    "proposed_method": {
+      "method_name": "Adaptive Multi-Component Soft Regularization (AMSR+)",
+      "description": "AMSR+ decomposes multiple data transformation effects and dynamically computes per-sample severity coefficients using an auxiliary lightweight network. These coefficients modulate a hierarchical softening function that produces adaptive soft targets, and incorporates self-supervised contrastive learning to fine-tune the soft target distributions, thereby improving both accuracy and calibration.",
+      "training_config": {
+        "learning_rate": 0.1,
+        "batch_size": 128,
+        "epochs": 200,
+        "optimizer": "SGD",
+        "weight_decay": 0.0005,
+        "gradient_clip": 1.0,
+        "scheduler": "cosine",
+        "seed": 42,
+        "additional_params": "kl_weight=0.5; auxiliary_net_architecture: Linear(2->16->2); adaptive softening with hierarchical combination of comp1 and comp2 coefficients"
+      },
+      "optuna_config": {
+        "enabled": true,
+        "n_trials": 20,
+        "search_spaces": [
+          {
+            "param_name": "kl_weight",
+            "distribution_type": "uniform",
+            "low": 0.1,
+            "high": 1.0
+          },
+          {
+            "param_name": "learning_rate",
+            "distribution_type": "loguniform",
+            "low": 0.0001,
+            "high": 0.1
+          }
+        ]
+      }
+    },
+    "comparative_methods": [
+      {
+        "method_name": "Fixed Soft Augmentation Baseline",
+        "description": "A baseline method that applies a predetermined, fixed softening function to create soft targets for augmentation, without adapting to sample-specific augmentation severity or modeling component interactions.",
+        "training_config": {
+          "learning_rate": 0.1,
+          "batch_size": 128,
+          "epochs": 200,
+          "optimizer": "SGD",
+          "weight_decay": 0.0005,
+          "gradient_clip": 1.0,
+          "scheduler": "cosine",
+          "seed": 42,
+          "additional_params": "Fixed softening exponent = 1.0 (constant) for all samples"
+        },
+        "optuna_config": {
+          "enabled": false,
+          "n_trials": 0,
+          "search_spaces": []
+        }
+      }
+    ]
   }
 }
