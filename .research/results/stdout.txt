@@ -22,3 +22,15 @@
 }
 === [TRIAL RUN] PASSED for proposed-resnet18-cifar10 at Wed Jan 21 08:38:14 UTC 2026 ===
 
+=== [UV SYNC] Start at Wed Jan 21 08:39:13 UTC 2026 ===
+=== [UV SYNC] Finished successfully at Wed Jan 21 08:39:13 UTC 2026 ===
+=== [FULL EXPERIMENT] Start for comparative-1-resnet18-cifar10 at Wed Jan 21 08:39:13 UTC 2026 ===
+WandB URL: https://wandb.ai/gengaru617-personal/2026-01-21-2/runs/comparative-1-resnet18-cifar10
+{
+  "status": "completed",
+  "best_val_accuracy": 0.8986,
+  "test_loss": 0.3571361184120178,
+  "test_acc": 0.8922,
+  "test_ece": 0.03715691715478897
+}
+=== [FULL EXPERIMENT] PASSED for comparative-1-resnet18-cifar10 at Wed Jan 21 08:58:57 UTC 2026 ===
