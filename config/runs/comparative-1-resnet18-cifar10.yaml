@@ -1,0 +1,29 @@
+run_id: comparative-1-resnet18-cifar10
+method: Fixed Soft Augmentation Baseline
+model:
+  name: resnet18
+  num_parameters: 11M
+dataset:
+  name: cifar10
+  preprocessing:
+    normalization: imagenet_stats
+    random_crop: 32
+    random_flip: horizontal
+  split:
+    train: 45000
+    val: 5000
+    test: 10000
+training:
+  learning_rate: 0.1
+  batch_size: 128
+  epochs: 200
+  optimizer: sgd
+  momentum: 0.9
+  weight_decay: 0.0005
+  gradient_clip: 1.0
+  scheduler: cosine
+  seed: 42
+  softening_exponent: 1.0
+optuna:
+  n_trials: 0
+  search_spaces: []

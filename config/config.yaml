@@ -1,0 +1,8 @@
+run: null  # Provided via CLI
+results_dir: ./results
+mode: full  # full | trial
+
+wandb:
+  entity: gengaru617-personal
+  project: 2026-01-21-2
+  mode: online

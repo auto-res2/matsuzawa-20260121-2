@@ -1,0 +1,39 @@
+run_id: proposed-resnet18-cifar10
+method: Adaptive Multi-Component Soft Regularization (AMSR+)
+model:
+  name: resnet18
+  num_parameters: 11M
+dataset:
+  name: cifar10
+  preprocessing:
+    normalization: imagenet_stats
+    random_crop: 32
+    random_flip: horizontal
+  split:
+    train: 45000
+    val: 5000
+    test: 10000
+training:
+  learning_rate: 0.1
+  batch_size: 128
+  epochs: 200
+  optimizer: sgd
+  momentum: 0.9
+  weight_decay: 0.0005
+  gradient_clip: 1.0
+  scheduler: cosine
+  seed: 42
+  kl_weight: 0.5
+  auxiliary_net_architecture: "Linear(2->16->2)"
+  notes: "adaptive softening with hierarchical combination of comp1 and comp2 coefficients"
+optuna:
+  n_trials: 20
+  search_spaces:
+    - param_name: kl_weight
+      distribution_type: uniform
+      low: 0.1
+      high: 1.0
+    - param_name: learning_rate
+      distribution_type: loguniform
+      low: 0.0001
+      high: 0.1
