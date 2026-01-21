@@ -33,8 +33,8 @@ class RandomErasingWithParam:
     def __call__(self, tensor: torch.Tensor):  # expects Tensor C×H×W
         if random.random() > self.p:
             return tensor, 0.0
-        i, j, h, w = transforms.RandomErasing.get_params(tensor, scale=self.scale, ratio=self.ratio, value=[0.0])
-        erased = F.erase(tensor, i, j, h, w, v=0.0, inplace=False)
+        i, j, h, w, v = transforms.RandomErasing.get_params(tensor, scale=self.scale, ratio=self.ratio, value=[0.0])
+        erased = F.erase(tensor, i, j, h, w, v=v, inplace=False)
         severity = (h * w) / (tensor.size(1) * tensor.size(2))
         return erased, severity
 
